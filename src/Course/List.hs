@@ -85,8 +85,7 @@ headOr _   (t :. _) = t
 product ::
   List Int
   -> Int
-product Nil = 1
-product (t :. lst) = t * (product lst)
+product = foldLeft (*) 1
 
 -- | Sum the elements of the list.
 --
@@ -100,8 +99,7 @@ product (t :. lst) = t * (product lst)
 sum ::
   List Int
   -> Int
-sum Nil = 0
-sum (t :. lst) = t + (sum lst)
+sum = foldLeft (+) 0
 
 -- | Return the length of the list.
 --
@@ -112,8 +110,7 @@ sum (t :. lst) = t + (sum lst)
 length ::
   List a
   -> Int
-length Nil = 0
-length (_ :. lst) = 1 + length lst
+length = foldLeft (const . (1 + )) 0
 
 -- | Map the given function on each element of the list.
 --
@@ -127,8 +124,7 @@ map ::
   (a -> b)
   -> List a
   -> List b
-map _ Nil = Nil
-map f (t :. lst) = (f t) :. (map f lst)
+map f = foldRight ((:.) . f) Nil
 
 -- | Return elements satisfying the given predicate.
 --
@@ -144,12 +140,7 @@ filter ::
   (a -> Bool)
   -> List a
   -> List a
-filter _ Nil = Nil
-filter f (t :. lst)
-  | f t = t :. tail
-  | otherwise = tail
-  where
-    tail = filter f lst
+filter f = foldRight (\el tail -> if f el then el :. tail else tail) Nil
 
 -- | Append two lists to a new list.
 --
@@ -167,9 +158,7 @@ filter f (t :. lst)
   List a
   -> List a
   -> List a
-(++) Nil lst = lst
-(++) lst Nil = lst
-(++) (t :. lst) nlst = t :. (lst ++ nlst)
+(++) = flip $ foldRight (:.)
 
 infixr 5 ++
 
@@ -186,9 +175,7 @@ infixr 5 ++
 flatten ::
   List (List a)
   -> List a
-flatten Nil = Nil
-flatten (t :. Nil) = t
-flatten (t :. lst) = t ++ flatten lst
+flatten = foldRight (++) Nil
 
 -- | Map a function then flatten to a list.
 --
@@ -240,8 +227,7 @@ flattenAgain = flatMap id
 seqOptional ::
   List (Optional a)
   -> Optional (List a)
-seqOptional Nil = Full Nil
-seqOptional (x :. lst) = twiceOptional (:.) x (seqOptional lst)
+seqOptional = foldRight (twiceOptional (:.)) (Full Nil)
 
 -- | Find the first element in the list matching the predicate.
 --
@@ -263,10 +249,9 @@ find ::
   (a -> Bool)
   -> List a
   -> Optional a
-find _ Nil = Empty
-find f (t :. lst)
-  | f t = Full t
-  | otherwise = find f lst
+-- find f lst = foldRight (\el tail -> if f el then Full el else tail) Empty lst
+find f = foldRight (<+>) Empty . map (\x -> if f x then Full x else Empty)
+
 
 -- | Determine if the length of the given list is greater than 4.
 --
@@ -305,10 +290,7 @@ lengthGT4 _ = True
 reverse ::
   List a
   -> List a
-reverse lst = reverse' lst Nil
-  where
-    reverse' Nil acc = acc
-    reverse' (t :. lst) acc = reverse' lst (t :. acc)
+reverse = foldLeft (flip (:.)) Nil
 
 -- | Produce an infinite `List` that seeds with the given value at its head,
 -- then runs the given function for subsequent elements
