@@ -17,6 +17,7 @@ class Functor f => Apply f where
     f (a -> b)
     -> f a
     -> f b
+  -- (<*>) f x = (\x' -> ((\f' -> f' x') <$> f)) <$> x
 
 infixl 4 <*>
 
@@ -29,8 +30,7 @@ instance Apply Id where
     Id (a -> b)
     -> Id a
     -> Id b
-  (<*>) =
-    error "todo"
+  (<*>) (Id f) x = f <$> x
 
 -- | Implement @Apply@ instance for @List@.
 --
