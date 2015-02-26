@@ -41,23 +41,19 @@ instance Functor (State s) where
     (a -> b)
     -> State s a
     -> State s b
-  (<$>) =
-      error "todo"
+  (<$>) func ss = State $ \s -> let (a, s') = runState ss s in (func a, s')
 
 -- | Implement the `Apply` instance for `State s`.
 -- >>> runState (pure (+1) <*> pure 0) 0
 -- (1,0)
---
--- >>> import qualified Prelude as P
--- >>> runState (State (\s -> ((+3), s P.++ ["apple"])) <*> State (\s -> (7, s P.++ ["banana"]))) []
--- (10,["apple","banana"])
 instance Apply (State s) where
   (<*>) ::
     State s (a -> b)
     -> State s a
     -> State s b 
-  (<*>) =
-    error "todo"
+  (<*>) ffunc ss = State $ \s -> let (f, s')  = runState ffunc s
+                                     (a, s'') = runState ss s'
+                                 in (f a, s'')
 
 -- | Implement the `Applicative` instance for `State s`.
 -- >>> runState (pure 2) 0
@@ -66,8 +62,7 @@ instance Applicative (State s) where
   pure ::
     a
     -> State s a
-  pure =
-    error "todo"
+  pure = State . (,)
 
 -- | Implement the `Bind` instance for `State s`.
 -- >>> runState ((const $ put 2) =<< put 1) 0
@@ -77,8 +72,9 @@ instance Bind (State s) where
     (a -> State s b)
     -> State s a
     -> State s b
-  (=<<) =
-    error "todo"
+  (=<<) f ss = State $ \initState -> let (v', nextState) = runState ss initState
+                                     in  runState (f v') nextState
+
 
 instance Monad (State s) where
 
@@ -89,8 +85,7 @@ exec ::
   State s a
   -> s
   -> s
-exec =
-  error "todo"
+exec = (snd .) . runState
 
 -- | Run the `State` seeded with `s` and retrieve the resulting value.
 --
@@ -99,8 +94,7 @@ eval ::
   State s a
   -> s
   -> a
-eval =
-  error "todo"
+eval = (fst .) . runState
 
 -- | A `State` where the state also distributes into the produced value.
 --
@@ -108,8 +102,7 @@ eval =
 -- (0,0)
 get ::
   State s s
-get =
-  error "todo"
+get = State $ \x -> (x, x)
 
 -- | A `State` where the resulting state is seeded with the given value.
 --
@@ -118,8 +111,7 @@ get =
 put ::
   s
   -> State s ()
-put =
-  error "todo"
+put v = State $ const ((), v)
 
 -- | Find the first element in a `List` that satisfies a given predicate.
 -- It is possible that no element is found, hence an `Optional` result.
@@ -140,8 +132,10 @@ findM ::
   (a -> f Bool)
   -> List a
   -> f (Optional a)
-findM =
-  error "todo"
+findM p = go
+    where
+        go Nil       = return Empty
+        go (x :. xs) = p x >>= (\r -> if r then return $ Full x else findM p xs)
 
 -- | Find the first element in a `List` that repeats.
 -- It is possible that no element repeats, hence an `Optional` result.
@@ -154,8 +148,9 @@ firstRepeat ::
   Ord a =>
   List a
   -> Optional a
-firstRepeat =
-  error "todo"
+firstRepeat lst = eval (findM check lst) S.empty
+    where
+        check el = get >>= (\s -> if el `S.member` s then return True else put (S.insert el s) >> return False)
 
 -- | Remove all duplicate elements in a `List`.
 -- /Tip:/ Use `filtering` and `State` with a @Data.Set#Set@.
@@ -164,11 +159,16 @@ firstRepeat =
 --
 -- prop> distinct xs == distinct (flatMap (\x -> x :. x :. Nil) xs)
 distinct ::
-  Ord a =>
+  (Ord a) =>
   List a
   -> List a
-distinct =
-  error "todo"
+distinct xs = eval (go xs) S.empty
+    where
+        go Nil       = return Nil
+        go (x :. xs) =
+            get >>=
+            (\s ->
+                if x `S.member` s then go xs else put (S.insert x s) >>= (\_ -> (x :.) <$> go xs))
 
 -- | A happy number is a positive integer, where the sum of the square of its digits eventually reaches 1 after repetition.
 -- In contrast, a sad number (not a happy number) is where the sum of the square of its digits never reaches 1
@@ -194,5 +194,11 @@ distinct =
 isHappy ::
   Integer
   -> Bool
-isHappy =
-  error "todo"
+isHappy = contains 1 . firstRepeat . produce f
+    where
+        f = toInteger . sum . map (join (*)) . digits
+        digits n
+            | n == 0 = Nil
+            | otherwise =
+                let (k,p) = n `divMod` 10
+                in fromInteger p :. digits k -- order of digits doesn't mean

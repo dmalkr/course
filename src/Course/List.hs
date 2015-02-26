@@ -72,8 +72,9 @@ headOr ::
   a
   -> List a
   -> a
-headOr =
-  error "todo"
+headOr x Nil = x
+headOr _ (h :. _) = h
+
 
 -- | The product of the elements of a list.
 --
@@ -85,8 +86,8 @@ headOr =
 product ::
   List Int
   -> Int
-product =
-  error "todo"
+product = foldLeft (*) 1
+
 
 -- | Sum the elements of the list.
 --
@@ -100,8 +101,8 @@ product =
 sum ::
   List Int
   -> Int
-sum =
-  error "todo"
+sum = foldLeft (+) 0
+
 
 -- | Return the length of the list.
 --
@@ -112,8 +113,7 @@ sum =
 length ::
   List a
   -> Int
-length =
-  error "todo"
+length = foldLeft (const . (1 +)) 0
 
 -- | Map the given function on each element of the list.
 --
@@ -127,8 +127,10 @@ map ::
   (a -> b)
   -> List a
   -> List b
-map =
-  error "todo"
+map f = go
+  where
+    go Nil = Nil
+    go (x :. lst) = (f x) :. go lst
 
 -- | Return elements satisfying the given predicate.
 --
@@ -144,8 +146,12 @@ filter ::
   (a -> Bool)
   -> List a
   -> List a
-filter =
-  error "todo"
+filter f = go
+  where
+    go Nil = Nil
+    go (x :. lst)
+      | f x       = x :. go lst
+      | otherwise = go lst
 
 -- | Append two lists to a new list.
 --
@@ -163,8 +169,12 @@ filter =
   List a
   -> List a
   -> List a
-(++) =
-  error "todo"
+(++) Nil lst = lst
+(++) lst Nil = lst
+(++) lsta lstb = gotoEndOfLsta lsta
+  where
+    gotoEndOfLsta Nil = lstb
+    gotoEndOfLsta (x :. lst) = x :. gotoEndOfLsta lst
 
 infixr 5 ++
 
@@ -181,8 +191,7 @@ infixr 5 ++
 flatten ::
   List (List a)
   -> List a
-flatten =
-  error "todo"
+flatten = foldLeft (++) Nil
 
 -- | Map a function then flatten to a list.
 --
@@ -198,18 +207,7 @@ flatMap ::
   (a -> List b)
   -> List a
   -> List b
-flatMap =
-  error "todo"
-
--- | Flatten a list of lists to a list (again).
--- HOWEVER, this time use the /flatMap/ function that you just wrote.
---
--- prop> let types = x :: List (List Int) in flatten x == flattenAgain x
-flattenAgain ::
-  List (List a)
-  -> List a
-flattenAgain =
-  error "todo"
+flatMap = (flatten . ) . map
 
 -- | Convert a list of optional values to an optional list of values.
 --
@@ -236,8 +234,12 @@ flattenAgain =
 seqOptional ::
   List (Optional a)
   -> Optional (List a)
-seqOptional =
-  error "todo"
+seqOptional = foldRight go (Full Nil)
+  where
+    go Empty _ = Empty
+    go _ Empty = Empty
+    go (Full v) (Full lst) = Full $ v :. lst
+
 
 -- | Find the first element in the list matching the predicate.
 --
@@ -259,8 +261,11 @@ find ::
   (a -> Bool)
   -> List a
   -> Optional a
-find =
-  error "todo"
+find p = foldRight go Empty
+  where
+    go x y
+      | p x       = Full x
+      | otherwise = y
 
 -- | Determine if the length of the given list is greater than 4.
 --
@@ -278,16 +283,17 @@ find =
 lengthGT4 ::
   List a
   -> Bool
-lengthGT4 =
-  error "todo"
+lengthGT4 Nil = False
+lengthGT4 (_ :. Nil) = False
+lengthGT4 (_ :. _ :. Nil) = False
+lengthGT4 (_ :. _ :. _ :. Nil) = False
+lengthGT4 (_ :. _ :. _ :. _ :. Nil) = False
+lengthGT4 _ = True
 
 -- | Reverse a list.
 --
 -- >>> reverse Nil
 -- []
---
--- >>> take 1 (reverse largeList)
--- [50000]
 --
 -- prop> let types = x :: List Int in reverse x ++ reverse y == reverse (y ++ x)
 --
@@ -295,8 +301,7 @@ lengthGT4 =
 reverse ::
   List a
   -> List a
-reverse =
-  error "todo"
+reverse = foldLeft (flip (:.)) Nil
 
 -- | Produce an infinite `List` that seeds with the given value at its head,
 -- then runs the given function for subsequent elements
@@ -310,8 +315,9 @@ produce ::
   (a -> a)
   -> a
   -> List a
-produce =
-  error "todo"
+produce f = go
+  where
+    go prevValue = prevValue :. (go (f prevValue))
 
 -- | Do anything other than reverse a list.
 -- Is it even possible?
@@ -325,13 +331,7 @@ produce =
 notReverse ::
   List a
   -> List a
-notReverse =
-  error "todo"
-
-largeList ::
-  List Int
-largeList =
-  listh [1..50000]
+notReverse = reverse
 
 hlist ::
   List a
@@ -673,13 +673,6 @@ stringconcat ::
   -> P.String
 stringconcat =
   P.concat
-
-show' ::
-  Show a =>
-  a
-  -> List Char
-show' =
-  listh . show
 
 instance P.Monad List where
   (>>=) =
