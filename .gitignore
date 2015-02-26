@@ -29,3 +29,5 @@ TAGS
 
 *.swp
 
+# my:
+.prj
