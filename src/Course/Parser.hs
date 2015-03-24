@@ -619,7 +619,7 @@ instance Apply Parser where
     Parser (a -> b)
     -> Parser a
     -> Parser b
-  (<*>) p1 p2 = bindParser (\a -> mapParser ($ a) p1) p2
+  (<*>) p1 p2 = bindParser (\a -> bindParser (valueParser . a) p2) p1
 
 -- | Write an Applicative functor instance for a @Parser@.
 instance Applicative Parser where
