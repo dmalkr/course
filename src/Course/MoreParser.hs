@@ -12,7 +12,7 @@ import Course.Optional
 import Course.Applicative
 import Course.Apply
 import Course.Bind
-import Course.Functor
+-- import Course.Functor
 import Course.Traversable
 
 -- $setup
@@ -226,7 +226,7 @@ betweenCharTok ::
   -> Char
   -> Parser a
   -> Parser a
-betweenCharTok o c = between (is o) (is c)
+betweenCharTok o c = between (charTok o) (charTok c)
 
 -- | Write a function that parses 4 hex digits and return the character value.
 --
